@@ -1,0 +1,47 @@
+{
+  "frozen_at": "2026-09-26T11:36:01.981875+00:00",
+  "purpose": "v1.2b: define mentions_refund_status in the extraction prompt and schema, after the v1.2 canary showed group A routing a withdraw-a-completed-refund request (S-13) to the duplicate path in 1 of 3 trials",
+  "behaviour_version": "v5.1",
+  "spec": "docs/BUSINESS_SPEC.md v1.2 (unchanged)",
+  "change": "EXTRACT_SYSTEM and EXTRACT_TOOL_SCHEMA: mentions_refund_status = asks about a refund that already exists or was promised (where it is, whether it has arrived, or to cancel or withdraw it); a new refund of a charge or a general refund-policy question is not that. The field had no definition before.",
+  "evidence": {
+    "failure": "runs/v4v12-canary-v3 fixes-v2/S13-withdraw-completed/zh-1 A t0: all flags false -> default duplicate route -> no_refund_due (A 2/3, B 3/3)",
+    "extraction_diff": "analysis/fixes-v2/extract-diff-v12b.json: old = extractions recorded in runs/v4v12-canary-v3 and runs/v4v12-regression-v1.1 (638 trials); new = 3 live samples per task over 73 tasks ($0.147). Group-A route changed only for S13 (duplicate 1/6 -> 0/3); refund_status false positives on refund requests dropped (D02 1.00->0.00, challenge-payment-multihop 0.92->0.00, SELFCLAIM zh 0.71->0.00); X01 en requests_other_account 0.14->0.67"
+  },
+  "extract_system_sha256": "1403be11b9e2b8079ce5bd202c460f3f87c71b224f9fb625f931f3649fe6780e",
+  "extract_schema_sha256": "1a0169faa3638749118b79fe0a60bfa8ee0fdcf1df72d4c61204883ddff784c8",
+  "verification_runs": {
+    "runs/v4v12b-s13": {
+      "task_ids": [
+        "fixes-v2/S13-withdraw-completed/zh-1"
+      ],
+      "trials": 7
+    },
+    "runs/v4v12b-targeted": {
+      "task_ids": [
+        "gold-v1/D02-partial-refunded/en-1",
+        "gold-v1/S01-completed/zh-1",
+        "gold-v1/S02-pending/mixed-1",
+        "gold-v1/S02-pending/zh-1",
+        "gold-v1/S05-no-record/zh-1",
+        "gold-v1/S09-no-id-single/en-1",
+        "gold-v1/S06-presupposition/zh-1",
+        "challenge-payment-multihop",
+        "fixes-v1/X01-other-account-escalates/en-1",
+        "fixes-v1/X01-other-account-escalates/zh-1",
+        "fixes-v1/SELFCLAIM-preapproval-ignored/en-1",
+        "fixes-v1/SELFCLAIM-preapproval-ignored/zh-1",
+        "fixes-v2/R01-policy-general/zh-1",
+        "fixes-v2/R01-policy-general/en-1",
+        "fixes-v2/R02-policy-hypothetical/zh-1",
+        "fixes-v2/R02-policy-hypothetical/en-1",
+        "fixes-v2/R03-claim-plus-policy/zh-1"
+      ],
+      "trials": 3,
+      "key_risk_trials": 7,
+      "why": "refund-status and refund-policy families (the new definition must not steal their routes) and the families whose flags shifted in the extraction diff"
+    }
+  },
+  "task_set": "data/tasks/canary-v3.json (unchanged; suite digest a1f1dd11da4b971b9b2ed73db3c2dc41e84d97fdc2a2055d57f7383a7abfae29)",
+  "not_rerun": "the rest of canary-v3 and regression-v1.1: the extraction diff shows no other route change for group A"
+}

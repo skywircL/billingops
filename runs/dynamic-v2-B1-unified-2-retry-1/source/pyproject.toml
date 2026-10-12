@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "billingops"
+version = "0.1.0"
+description = "BillingOps Agent: a billing-investigation agent with human approval, keyed refunds, independent verification, and honest unknown outcomes"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Upstream reliability layer, pinned by commit in vendor/UPSTREAM_PIN.txt.
+    "langgraph-production",
+    "langgraph>=1.0,<2",
+    "langgraph-checkpoint-sqlite>=2.0",
+    "pydantic>=2.7",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+    "openai>=1.40",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-timeout>=2.3"]
+trace = [
+    "langfuse>=4,<5",
+]
+
+[project.scripts]
+billing-service = "billing_service.__main__:main"
+billingops-api = "billingops.api.__main__:main"
+billingops-eval = "billingops.evaluation.__main__:main"
+
+[tool.uv.sources]
+langgraph-production = { path = "vendor/langgraph-production", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/billingops", "src/billing_service"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+timeout = 120

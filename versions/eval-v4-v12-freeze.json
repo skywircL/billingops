@@ -1,0 +1,38 @@
+{
+  "frozen_at": "2026-09-26T10:48:47.655598+00:00",
+  "purpose": "v1.2 regression: refund-policy questions (4.5), out-of-scope requests (4.6), customer messages while awaiting approval (5.2), progress questions in the other open states (5.5), and the write-side exception tasks CH-01/02/04/05",
+  "behaviour_version": "v5",
+  "contract": "1 (+ optional v1.2 fields: reference_followups, max/min_proposal_version, progress_replies)",
+  "grader": "g2",
+  "judge": "j4",
+  "spec": "docs/BUSINESS_SPEC.md v1.2 (confirmed 2026-09-26); v1.1 snapshot in versions/spec-v1.1/",
+  "model": {
+    "id": "deepseek-flash",
+    "temperature": 0.0,
+    "max_tokens": 4096
+  },
+  "task_sets": {
+    "canary-v3": "a373dbf578df92f4259d05f2ee35b648f4003d6307b76854bb22f7d73c8e99cf",
+    "canary-v2": "102c09e57c0e441b22568ac73057fa4c040ab9930dffb443fe9fa26b42612b33",
+    "fixes-v2": "b0e9e8c6a9b8d1a0888d6f2902dd379049ff213ac2c92a6d11c43eb8672571ae",
+    "regression-v1.1": "ae226da5c3274812a9ab16cfea81e4a12e24b0e48869803d4f06a4022fd552ab"
+  },
+  "task_sets_digest_method": "sha256 of json.dumps(<file JSON>, sort_keys=True, ensure_ascii=False) with default separators",
+  "suite_task_set_sha256": {
+    "canary-v3": "a1f1dd11da4b971b9b2ed73db3c2dc41e84d97fdc2a2055d57f7383a7abfae29",
+    "canary-v2": "fa9c66f2491effbdacce0baf121f062386a45fecd56c3fbe9ca1311bfc17e329",
+    "fixes-v2": "7a984dd6a9e2f4c2617b85c75827f80eed9532886e212b5767ed2f8fa7f0b112",
+    "regression-v1.1": "2a7d31232ecf6dfa90da9a12670701f89ff8c9e49d3ae22692b719050d068206"
+  },
+  "suite_task_set_sha256_note": "same files in the format run manifests use (evaluation.artifacts.digest: sorted keys, compact separators); added 2026-09-26 after the runs started, both formats verified against the unchanged files",
+  "changes": [
+    "tools: conclusion types explain_refund_policy and explain_out_of_scope; extraction flags asks_refund_policy and requests_out_of_scope; classify_followup tool",
+    "graph: the approval gate hands customer messages to a new followup node (new information / withdraw / progress; identifiers, errors and unclear all mean new information)",
+    "rules: refund_policy reads the refunds policy; outside_desk ends in explain_out_of_scope with no reads; both rank after every actual claim",
+    "runtime: withdrawal closes the case without a refund; progress questions in other open states are answered from the record without touching the case",
+    "prompts: extraction, investigation and conclusion prompts extended; new followup classification prompt",
+    "tests: 27 new flow tests; graph-structure test asserts the followup node can never lead past the approval",
+    "replays: re-recorded to data/replays/real-v6"
+  ],
+  "not_covered": "CH-03 (E-04, conditions change between approval and execution) cannot be expressed in contract v1; covered by tests/test_approvals.py::test_conditions_changed_between_approval_and_execution_reproposes"
+}

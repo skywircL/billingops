@@ -1,0 +1,706 @@
+<title>BillingOps 观测台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap">
+<style>
+:root {
+  --bg: #F2F5F3; --surface: #FFFFFF; --surface-2: #E9EEEB; --ink: #16201C; --ink-2: #34413C; --muted: #5E6C66;
+  --line: #D3DBD7; --line-2: #E3E8E5; --accent: #245F84; --accent-soft: #DCE8F1;
+  --a: #17786A; --a-soft: #DCEFEB; --b: #7446B0; --b-soft: #ECE4F7;
+  --good: #23784A; --good-soft: #DDF0E4; --warn: #9A6410; --warn-soft: #F7EAD3; --bad: #B0362F; --bad-soft: #F7DEDB;
+  --font-ui: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --font-title: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1312; --surface: #151C1A; --surface-2: #1B2421; --ink: #E3EAE7; --ink-2: #C3CEC9; --muted: #92A29C;
+    --line: #2C3834; --line-2: #222C29; --accent: #86B7DA; --accent-soft: #1B2D3A;
+    --a: #4CC0AC; --a-soft: #173A34; --b: #B697E6; --b-soft: #2E2440;
+    --good: #62C48B; --good-soft: #173826; --warn: #E2A74C; --warn-soft: #3A2C14; --bad: #EF7C73; --bad-soft: #3F1E1B;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1312; --surface: #151C1A; --surface-2: #1B2421; --ink: #E3EAE7; --ink-2: #C3CEC9; --muted: #92A29C;
+  --line: #2C3834; --line-2: #222C29; --accent: #86B7DA; --accent-soft: #1B2D3A;
+  --a: #4CC0AC; --a-soft: #173A34; --b: #B697E6; --b-soft: #2E2440;
+  --good: #62C48B; --good-soft: #173826; --warn: #E2A74C; --warn-soft: #3A2C14; --bad: #EF7C73; --bad-soft: #3F1E1B;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px; line-height: 1.55; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: clamp(16px, 3vw, 32px); padding-block: 22px 56px; }
+h1, h2, h3 { font-family: var(--font-title); text-wrap: balance; margin: 0; }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: 0.01em; }
+h2 { font-size: 18px; font-weight: 700; }
+h3 { font-size: 15px; font-weight: 600; }
+.mono, code { font-family: var(--font-mono); font-size: 12.5px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* header + tabs */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; }
+.top p { margin: 4px 0 0; }
+.legend { display: flex; gap: 8px; flex-wrap: wrap; }
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); margin-top: 18px; border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; }
+.tab { border: 0; background: none; padding: 10px 14px 9px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 500; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab:hover { color: var(--ink); }
+.panel { padding-top: 22px; display: grid; gap: 28px; }
+section.block { display: grid; gap: 12px; }
+.block-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+
+/* chips & pills */
+.pill, .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 9px; font-size: 12px; line-height: 20px; white-space: nowrap; border: 1px solid transparent; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.info { background: var(--accent-soft); color: var(--accent); }
+.pill.plain { background: var(--surface-2); color: var(--ink-2); }
+.chip.ga { background: var(--a-soft); color: var(--a); font-family: var(--font-mono); font-weight: 600; }
+.chip.gb { background: var(--b-soft); color: var(--b); font-family: var(--font-mono); font-weight: 600; }
+.chip.check { background: var(--surface); border-color: var(--line); color: var(--ink-2); }
+
+/* tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 4px; align-content: start; }
+.tile .label { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.tile .value { font-family: var(--font-mono); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.tile .sub { font-size: 12.5px; color: var(--muted); }
+
+/* charts */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 12px; }
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 8px; display: grid; gap: 6px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart .grid { stroke: var(--line-2); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.chart .line-a { fill: none; stroke: var(--a); stroke-width: 2; }
+.chart .line-b { fill: none; stroke: var(--b); stroke-width: 2; }
+.chart .dot-a { fill: var(--surface); stroke: var(--a); stroke-width: 2; }
+.chart .dot-b { fill: var(--surface); stroke: var(--b); stroke-width: 2; }
+.chart .end-a { fill: var(--a); }
+.chart .end-b { fill: var(--b); }
+.chart .val-a { fill: var(--a); font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; }
+.chart .val-b { fill: var(--b); font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; }
+
+/* tables */
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12px; letter-spacing: 0.03em; background: var(--surface-2); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--surface-2); }
+tr.selected td { background: var(--accent-soft); }
+tr.hot td { background: var(--bad-soft); }
+.delta-down { color: var(--bad); font-weight: 600; }
+.delta-up { color: var(--good); font-weight: 600; }
+.rowbtn { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: var(--accent); font-weight: 600; }
+table.nowrap td, table.nowrap th { white-space: nowrap; }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.controls label { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); }
+select, input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; min-width: 0; max-width: 100%; }
+input[type="search"] { width: 220px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12.5px; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* lists */
+.list { display: grid; gap: 8px; }
+.item { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
+.item-head { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.task { font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+
+/* cases split */
+.split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+.caselist { display: grid; gap: 6px; max-height: 78vh; overflow-y: auto; padding-right: 2px; }
+.case { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 9px 11px; cursor: pointer; display: grid; gap: 4px; }
+.case:hover { border-color: var(--accent); }
+.case[aria-current="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.case .title { color: var(--ink-2); font-size: 13px; overflow-wrap: anywhere; }
+.detail { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 14px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 52px); max-height: calc(100vh - 70px); overflow-y: auto; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; font-size: 13px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.quote { background: var(--surface-2); border-radius: 6px; padding: 9px 11px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; max-width: 72ch; }
+.notice { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 8px 11px; font-size: 13px; }
+.empty { color: var(--muted); padding: 10px 0; }
+
+/* history */
+.timeline { display: grid; gap: 0; border-left: 2px solid var(--line); margin-left: 6px; }
+.event { position: relative; padding: 0 0 18px 20px; display: grid; gap: 4px; max-width: 86ch; }
+.event::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+.event .when { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.event .result { font-weight: 500; }
+footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; display: grid; gap: 4px; }
+
+@media (max-width: 960px) {
+  .split { grid-template-columns: 1fr; }
+  .detail { position: static; max-height: none; }
+  .caselist { max-height: 46vh; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>BillingOps 观测台</h1>
+      <p class="muted small" id="freshness"></p>
+    </div>
+    <div class="legend" aria-label="分组">
+      <span class="chip ga">A 固定流程</span>
+      <span class="chip gb">B 动态调查</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="视图">
+    <button class="tab" role="tab" id="tab-overview" aria-controls="overview" aria-selected="true">总览</button>
+    <button class="tab" role="tab" id="tab-runs" aria-controls="runs" aria-selected="false">评测记录</button>
+    <button class="tab" role="tab" id="tab-cases" aria-controls="cases" aria-selected="false">坏例</button>
+    <button class="tab" role="tab" id="tab-history" aria-controls="history" aria-selected="false">历程与门禁</button>
+  </nav>
+
+  <main>
+    <div class="panel" id="overview" role="tabpanel" aria-labelledby="tab-overview"></div>
+    <div class="panel" id="runs" role="tabpanel" aria-labelledby="tab-runs" hidden></div>
+    <div class="panel" id="cases" role="tabpanel" aria-labelledby="tab-cases" hidden></div>
+    <div class="panel" id="history" role="tabpanel" aria-labelledby="tab-history" hidden></div>
+  </main>
+
+  <footer>
+    <div>由 <code>python -m billingops.evaluation dashboard</code> 生成；每次评测后先 <code>cases import</code>、<code>cases mine</code>，再重新生成。</div>
+    <div>数据来源：<code>runs/</code>（suite 格式的评测）、<code>analysis/*/release.json</code>（门禁）、<code>data/cases.sqlite3</code>（案例台，只读）。封存集只显示族级计数。</div>
+  </footer>
+</div>
+
+<script type="application/json" id="obs-data">__OBS_DATA__</script>
+<script>
+(function () {
+  "use strict";
+  const DATA = JSON.parse(document.getElementById("obs-data").textContent);
+  const GROUPS = ["A", "B"];
+  const SVGNS = "http://www.w3.org/2000/svg";
+
+  // -- labels ---------------------------------------------------------------------------------
+  const CONCL = { refund_proposed: "提出退款", explain_refund_status: "解释退款状态", no_refund_due: "无需退款", no_duplicate_found: "未发现重复",
+    insufficient_information: "信息不足", escalate: "转人工", explain_subscription: "解释订阅", explain_refund_policy: "解释退款规则",
+    explain_out_of_scope: "说明不在范围内", refund_withdrawn: "已撤回" };
+  const STATE = { closed: "已关闭", escalated: "已转人工", awaiting_approval: "等待审批", awaiting_user: "等待客户", uncertain: "结果待核实",
+    investigating: "调查中", executing: "执行中", verifying: "核实中", error: "出错" };
+  const CHECK = { "outcome.outcome_allowed": "处置不在允许范围", "outcome.target": "退款目标不符", "outcome.amount": "退款金额不符",
+    "outcome.executed_and_verified": "退款未执行或未核实", "outcome.state_diff": "账务变化不符", "outcome.no_execution": "出现了不该有的执行",
+    "behaviour.facts": "缺少必要事实", "behaviour.clarify": "追问与预期不符", "behaviour.scope": "读取了越界编号", "behaviour.single_send": "发送超过一次",
+    "behaviour.approved_before_send": "发送前未获批准", "behaviour.verified_independently": "未独立核实", "behaviour.verdict_reason": "判定理由不符",
+    "behaviour.proposal_versions": "提案被不当重开", "behaviour.proposal_reopened": "提案未按新信息重开", "behaviour.progress_replies": "进度问题未获回复" };
+  const STATUS = { open: ["待处理", "warn"], confirmed: ["已确认", "bad"], fixed: ["已修复", "good"], promoted: ["已进回归", "good"], not_a_defect: ["非缺陷", "plain"] };
+  const CHANNEL = { auto_failure: "自动失败", response: "表达层", response_severe: "表达层·严重", round1_defect: "第一轮缺陷", eval_self_check: "评测自检",
+    historical: "历史", observability: "观测", ab_diff: "A/B 分歧", scoring_dispute: "评分争议", grader_dispute: "评分器争议",
+    rubric_dispute: "断言争议", spec_gap: "规范缺口" };
+  const KIND = { badcase: "坏例", dispute: "争议" };
+  const LINE = { duplicate: "重复扣费", refund_status: "退款状态", subscription: "订阅", refund_policy: "退款规则", out_of_scope: "范围外" };
+  const SERIES = { canary: "canary", regression: "回归集", sealed: "封存集", fixes: "修复验证集", calibration: "校准集" };
+
+  const lab = (map, key) => (key == null ? "—" : (map[key] || key));
+  const checkLabel = (c) => {
+    if (CHECK[c]) return CHECK[c];
+    const m = /^(outcome|behaviour)\.unknown:(.*)$/.exec(c);
+    return m ? (m[1] === "outcome" ? "结果层未知" : "行为层未知") + "（" + m[2] + "）" : c;
+  };
+
+  // -- formatting -----------------------------------------------------------------------------
+  const pct = (v, d = 1) => (v == null || isNaN(v) ? "—" : (v * 100).toFixed(d) + "%");
+  const money = (v) => (v == null ? "—" : "$" + (v >= 0.1 ? v.toFixed(2) : v.toFixed(3)));
+  const frac = (c) => (c ? c[0] + "/" + c[1] : "—");
+  const when = (iso) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return isNaN(d) ? String(iso) : d.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+  };
+  const day = (iso) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return isNaN(d) ? String(iso).slice(0, 10) : d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  };
+  const dur = (s) => (s == null ? "—" : Math.floor(s / 60) + " 分 " + String(Math.round(s % 60)).padStart(2, "0") + " 秒");
+
+  // -- dom ------------------------------------------------------------------------------------
+  function h(tag, props, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat(Infinity)) {
+      if (kid == null || kid === false) continue;
+      el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+  function s(tag, attrs, ...kids) {
+    const el = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v != null) el.setAttribute(k, v);
+    for (const kid of kids.flat(Infinity)) {
+      if (kid == null) continue;
+      el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+  const pill = (text, tone) => h("span", { class: "pill " + (tone || "plain") }, text);
+  const gchip = (g) => (g === "A" || g === "B" ? h("span", { class: "chip g" + g.toLowerCase() }, g) : null);
+  const table = (head, rows, opts = {}) =>
+    h("div", { class: "scroll" }, h("table", { class: opts.cls || null },
+      h("thead", null, h("tr", null, head.map((c) => h("th", { class: c.r ? "r" : null }, c.t || c)))),
+      h("tbody", null, rows.length ? rows : h("tr", null, h("td", { colspan: head.length, class: "muted" }, opts.empty || "没有数据")))));
+
+  // -- data views -----------------------------------------------------------------------------
+  const RUNS = DATA.runs;
+  const fullRuns = RUNS.filter((r) => !r.aborted && !r.subset && r.complete);
+  const latestOf = (series) => fullRuns.filter((r) => r.series === series).slice(-1)[0];
+  // The previous complete run of the same series; when the task set grew, only families both runs have are compared.
+  const prevComparable = (run) => fullRuns.filter((r) => r.series === run.series && String(r.started) < String(run.started)).slice(-1)[0];
+  const toneFor = (v, good, warn) => (v == null ? "plain" : v >= good ? "good" : v >= warn ? "warn" : "bad");
+  const FINDINGS = DATA.findings;
+
+  // -- overview -------------------------------------------------------------------------------
+  function tile(label, value, sub, tone, toneText) {
+    return h("div", { class: "tile" },
+      h("div", { class: "label" }, h("span", null, label), toneText ? pill(toneText, tone) : null),
+      h("div", { class: "value" }, value),
+      sub ? h("div", { class: "sub" }, sub) : null);
+  }
+
+  const failedTrials = (run) => run.failures.reduce((n, f) => n + f.n, 0);
+
+  function aggregateFailures(run) {
+    const by = new Map();
+    for (const f of run.failures) {
+      const key = f.g + "|" + f.task;
+      const e = by.get(key) || { g: f.g, task: f.task, n: 0, checks: new Set(), outcomes: new Set() };
+      e.n += f.n;
+      f.checks.forEach((c) => e.checks.add(c));
+      e.outcomes.add(lab(STATE, f.state) + " · " + lab(CONCL, f.concl));
+      by.set(key, e);
+    }
+    return [...by.values()].sort((a, b) => b.n - a.n || a.g.localeCompare(b.g));
+  }
+
+  function failureList(run, title) {
+    const items = aggregateFailures(run);
+    const total = Object.values(run.groups).reduce((n, g) => n + g.n, 0);
+    return h("section", { class: "block" },
+      h("div", { class: "block-head" }, h("h3", null, title),
+        h("span", { class: "muted small" }, run.short + " · " + run.task_set + " · " + when(run.started) + " · " + failedTrials(run) + "/" + total + " 次试验未通过")),
+      items.length ? h("div", { class: "list" }, items.map((e) =>
+        h("div", { class: "item" },
+          h("div", { class: "item-head" }, gchip(e.g), h("span", { class: "task" }, e.task), pill("×" + e.n, "bad"),
+            h("button", { class: "btn", onclick: () => openCases({ q: e.task, kind: "", status: "", g: "", channel: "", run: "" }) }, "看坏例")),
+          h("div", { class: "item-head" }, [...e.checks].map((c) => h("span", { class: "chip check" }, checkLabel(c)))),
+          h("div", { class: "muted small" }, "实际：" + [...e.outcomes].join("；"))))) : h("div", { class: "empty" }, "全部通过"));
+  }
+
+  function lineChart(runs, title) {
+    const W = 560, H = 236, L = 46, R = 70, T = 16, B = 48;
+    const vals = runs.flatMap((r) => GROUPS.map((g) => r.groups[g] && r.groups[g].S).filter((v) => v != null));
+    const hi = 1;
+    const rawLo = Math.min(Math.min(...vals) - 0.02, 0.9);
+    const step = hi - rawLo > 0.3 ? 0.1 : 0.05;
+    const lo = Math.max(0, Math.floor(rawLo / step + 1e-9) * step);  // ticks land on whole steps up to 100%
+    const xs = (i) => (runs.length === 1 ? L + (W - L - R) / 2 : L + (i * (W - L - R)) / (runs.length - 1));
+    const ys = (v) => T + ((hi - v) * (H - T - B)) / (hi - lo);
+    const svg = s("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": title });
+    const nTicks = Math.round((hi - lo) / step);
+    for (let k = 0; k <= nTicks; k++) {
+      const v = lo + k * step;
+      svg.append(s("line", { class: "grid", x1: L, x2: W - R + 8, y1: ys(v), y2: ys(v) }));
+      svg.append(s("text", { class: "axis", x: L - 8, y: ys(v) + 4, "text-anchor": "end" }, Math.round(v * 100) + "%"));
+    }
+    runs.forEach((r, i) => {
+      svg.append(s("text", { class: "axis", x: xs(i), y: H - B + 18, "text-anchor": "middle" }, r.short));
+      svg.append(s("text", { class: "axis", x: xs(i), y: H - B + 33, "text-anchor": "middle" }, r.task_set.replace(/^.*-(v[\d.]+)$/, "$1")));
+    });
+    const ends = [];
+    for (const g of GROUPS) {
+      const pts = runs.map((r, i) => [i, r.groups[g] && r.groups[g].S, r]).filter((p) => p[1] != null);
+      if (!pts.length) continue;
+      const key = g.toLowerCase();
+      if (pts.length > 1) svg.append(s("polyline", { class: "line-" + key, points: pts.map(([i, v]) => xs(i) + "," + ys(v)).join(" ") }));
+      pts.forEach(([i, v, r], n) => {
+        const last = n === pts.length - 1;
+        const gs = r.groups[g];
+        svg.append(s("circle", { class: last ? "end-" + key : "dot-" + key, cx: xs(i), cy: ys(v), r: last ? 5 : 3.5 },
+          s("title", null, `${r.short} · ${r.task_set} · ${g} S=${pct(v)}（${gs.pass}/${gs.n} 次通过）`)));
+      });
+      const [li, lv] = pts[pts.length - 1];
+      ends.push({ key, x: xs(li) + 9, y: ys(lv) + 4, text: pct(lv) });
+    }
+    if (ends.length === 2 && Math.abs(ends[0].y - ends[1].y) < 13) {
+      const [up, down] = ends[0].y <= ends[1].y ? [ends[0], ends[1]] : [ends[1], ends[0]];
+      up.y -= 7; down.y += 7;
+    }
+    ends.forEach((e) => svg.append(s("text", { class: "val-" + e.key, x: e.x, y: e.y }, e.text)));
+    return h("div", { class: "chart" },
+      h("div", { class: "block-head" }, h("h3", null, title), h("span", { class: "muted small" }, "S：任务等权的试验均值，未知算失败")),
+      svg);
+  }
+
+  function renderOverview() {
+    const root = document.getElementById("overview");
+    root.replaceChildren();
+    const canary = latestOf("canary"), regression = latestOf("regression"), sealed = latestOf("sealed");
+    const tiles = [];
+    if (regression && regression.groups.A) {
+      const a = regression.groups.A, ok = a.fail + a.unknown === 0;
+      tiles.push(tile("A · 必过回归", a.pass + "/" + a.n, regression.short + " · " + regression.task_set + " · " + day(regression.started), ok ? "good" : "bad", ok ? "全过" : "有失败"));
+    }
+    if (canary && canary.groups.A) {
+      const a = canary.groups.A;
+      tiles.push(tile("A · canary", pct(a.S), a.pass + "/" + a.n + " 次试验通过 · " + canary.short, toneFor(a.S, 0.95, 0.9), a.S >= 0.95 ? "达标" : a.S >= 0.9 ? "注意" : "未达标"));
+    }
+    if (canary && canary.groups.B) {
+      const b = canary.groups.B;
+      tiles.push(tile("B · canary（对照）", pct(b.S), b.pass + "/" + b.n + " 次试验通过 · 协议修复 " + b.repair_trials + " 次试验", toneFor(b.S, 0.95, 0.9), "对照组"));
+    }
+    const recent = [canary, regression].filter(Boolean);
+    const safety = recent.reduce((n, r) => n + Object.values(r.groups).reduce((m, g) => m + g.safety, 0), 0);
+    const incomplete = recent.reduce((n, r) => n + Object.values(r.groups).reduce((m, g) => m + g.evidence_incomplete, 0), 0);
+    tiles.push(tile("安全事件", String(safety), "最近的 canary 与回归集 · 证据不完整 " + incomplete + " 次", safety ? "bad" : "good", safety ? "需处理" : "无"));
+    if (canary) {
+      const parts = GROUPS.filter((g) => canary.groups[g] && canary.groups[g].zh).map((g) => g + " " + pct(canary.groups[g].zh_en / canary.groups[g].zh, 0));
+      const worst = Math.max(...GROUPS.filter((g) => canary.groups[g] && canary.groups[g].zh).map((g) => canary.groups[g].zh_en / canary.groups[g].zh));
+      if (parts.length) tiles.push(tile("中文题收到英文回复", parts.join(" · "), "最近的 canary；回复里几乎没有中文即计入", worst > 0.1 ? "warn" : "good", worst > 0.1 ? "注意" : "正常"));
+    }
+    const open = FINDINGS.filter((f) => f.kind === "badcase" && (f.status === "open" || f.status === "confirmed"));
+    const byG = (g) => open.filter((f) => f.g === g).length;
+    tiles.push(tile("未关闭的坏例", String(open.length), "A " + byG("A") + " · B " + byG("B") + " · 其他 " + (open.length - byG("A") - byG("B")) + "（待处理与已确认）", "info", "案例台"));
+    const gate = DATA.gates.slice(-1)[0];
+    if (gate) {
+      const exposed = DATA.sealed_sets.some((x) => x.exposure === "exposed" && gate.sealed_run && gate.sealed_run.includes(String(x.path || "").replace(/^.*\/(.*)\.json$/, "$1")));
+      tiles.push(tile("最近一次门禁", gate.decision === "pass" ? "通过" : gate.decision === "fail" ? "未通过" : gate.decision,
+        day(gate.checked_at) + " · S=" + pct(gate.S && gate.S.lower) + (exposed ? " · 封存集已暴露，只算测量" : ""),
+        exposed ? "warn" : gate.decision === "pass" ? "good" : "bad", exposed ? "仅测量" : gate.decision === "pass" ? "有效" : "阻断"));
+    }
+    root.append(h("section", { class: "block" },
+      h("div", { class: "block-head" }, h("h2", null, "当前状态"), h("span", { class: "muted small" }, "门禁只裁决 A（业务默认）；B 同表报告")),
+      h("div", { class: "tiles" }, tiles)));
+
+    const charts = ["canary", "regression", "sealed"].map((series) => [series, fullRuns.filter((r) => r.series === series)]).filter(([, rs]) => rs.length);
+    root.append(h("section", { class: "block" },
+      h("div", { class: "block-head" }, h("h2", null, "趋势"), h("span", { class: "muted small" }, "只含完整跑完的整套评测；横轴下方是题库版本，版本变了题目也变了")),
+      h("div", { class: "charts" }, charts.map(([series, rs]) => lineChart(rs, lab(SERIES, series))))));
+
+    const lists = [canary && failureList(canary, "最近一次 canary 的失败"), regression && failureList(regression, "最近一次回归集的失败")].filter(Boolean);
+    if (lists.length) root.append(h("section", { class: "block" }, h("h2", null, "最近的失败"), h("div", { class: "charts" }, lists)));
+    if (sealed) root.append(h("p", { class: "muted small" }, "封存集最近一次：" + sealed.short + "（" + day(sealed.started) + "），A S=" + pct(sealed.groups.A && sealed.groups.A.S) + "，B S=" + pct(sealed.groups.B && sealed.groups.B.S) + "。详见“评测记录”。"));
+  }
+
+  // -- runs -----------------------------------------------------------------------------------
+  const runState = { series: "", selected: null, allFamilies: false };
+
+  function runPills(r) {
+    return [
+      r.aborted ? pill("中止", "bad") : r.complete ? pill("完成", "good") : pill("未完成", "warn"),
+      r.subset ? pill("子集 " + r.tasks + "/" + r.task_set_size, "info") : null,
+      r.sealed ? pill("封存集", "warn") : null,
+      r.source === "rescore-g2" ? pill("g2 重评分", "plain") : null,
+    ];
+  }
+
+  function renderRuns() {
+    const root = document.getElementById("runs");
+    root.replaceChildren();
+    const seriesList = [...new Set(RUNS.map((r) => r.series))];
+    const select = h("select", { id: "run-series", onchange: (e) => { runState.series = e.target.value; renderRuns(); } },
+      h("option", { value: "" }, "全部题库"), seriesList.map((x) => h("option", { value: x }, lab(SERIES, x))));
+    select.value = runState.series;
+    const shown = RUNS.filter((r) => !runState.series || r.series === runState.series).slice().reverse();
+    const cell = (r, g) => (r.groups[g] ? h("span", null, r.groups[g].pass + "/" + r.groups[g].n) : "—");
+    const rows = shown.map((r) => h("tr", { class: "clickable" + (runState.selected === r.id ? " selected" : ""), onclick: () => selectRun(r.id) },
+      h("td", { class: "num" }, when(r.started)),
+      h("td", null, h("button", { class: "rowbtn", onclick: (e) => { e.stopPropagation(); selectRun(r.id); } }, r.short), h("div", { class: "mono muted" }, r.id)),
+      h("td", null, h("span", { class: "mono" }, r.task_set)),
+      h("td", { class: "r" }, cell(r, "A")),
+      h("td", { class: "r" }, cell(r, "B")),
+      h("td", { class: "r" }, pct(r.groups.A && r.groups.A.S)),
+      h("td", { class: "r" }, pct(r.groups.B && r.groups.B.S)),
+      h("td", { class: "r" }, String(Object.values(r.groups).reduce((n, g) => n + g.safety, 0))),
+      h("td", { class: "r" }, money(r.spent)),
+      h("td", { class: "r" }, dur(r.wall)),
+      h("td", null, h("div", { class: "item-head" }, runPills(r)))));
+    root.append(h("section", { class: "block" },
+      h("div", { class: "block-head" }, h("h2", null, "评测记录"), h("div", { class: "controls" }, h("label", { for: "run-series" }, "题库"), select)),
+      table(["开始", "评测", "题库", { t: "A 通过", r: 1 }, { t: "B 通过", r: 1 }, { t: "S · A", r: 1 }, { t: "S · B", r: 1 }, { t: "安全", r: 1 }, { t: "费用", r: 1 }, { t: "用时", r: 1 }, "状态"], rows, { cls: "nowrap" }),
+      h("p", { class: "muted small" }, "点一行看这次评测的分组指标、各族结果和失败明细。“子集”是只跑了部分题的定向验证，不进趋势图。")));
+    const selected = RUNS.find((r) => r.id === runState.selected) || shown[0];
+    if (selected) root.append(runDetail(selected));
+  }
+
+  function selectRun(id) {
+    runState.selected = id;
+    renderRuns();
+    const d = document.getElementById("run-detail");
+    if (d) d.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function runDetail(r) {
+    const prev = !r.subset && !r.aborted ? prevComparable(r) : null;
+    const prevFam = new Map((prev ? prev.families : []).map((f) => [f[0], f]));
+    const metric = (name, fn, right = true) => h("tr", null, h("td", null, name), GROUPS.map((g) => h("td", { class: right ? "r" : null }, r.groups[g] ? fn(r.groups[g]) : "—")));
+    const statsRows = [
+      metric("试验 / 题", (g) => g.n + " / " + g.tasks),
+      metric("通过 / 失败 / 未知", (g) => g.pass + " / " + g.fail + " / " + g.unknown),
+      metric("S（任务等权）", (g) => pct(g.S)),
+      metric("安全事件", (g) => String(g.safety)),
+      metric("证据不完整", (g) => String(g.evidence_incomplete)),
+      metric("协议失败后被系统转人工", (g) => String(g.own)),
+      metric("协议修复（次数 / 涉及试验）", (g) => g.repairs + " / " + g.repair_trials),
+      metric("向客户追问（次）", (g) => String(g.clarifications)),
+      metric("中文题收到英文回复", (g) => (g.zh ? g.zh_en + "/" + g.zh + "（" + pct(g.zh_en / g.zh, 0) + "）" : "—")),
+      metric("模型费用", (g) => money(g.cost)),
+      metric("单次用时 p50 / p95", (g) => g.p50 + " 秒 / " + g.p95 + " 秒"),
+    ];
+    const sliceRows = Object.entries(r.slices).map(([line, v]) => h("tr", null, h("td", null, lab(LINE, line)), GROUPS.map((g) => h("td", { class: "r" }, frac(v[g])))));
+    const delta = (cur, old) => {
+      if (!cur || !old) return h("span", { class: "muted" }, "—");
+      const d = cur[0] / cur[1] - old[0] / old[1];
+      if (Math.abs(d) < 1e-9) return h("span", { class: "muted" }, "0");
+      return h("span", { class: d < 0 ? "delta-down" : "delta-up" }, (d > 0 ? "+" : "") + (d * 100).toFixed(0) + " 点");
+    };
+    const rate = (c) => c[0] / c[1];
+    const famInfo = r.families.map((f) => {
+      const old = prevFam.get(f[0]);
+      const bad = [f[2], f[3]].some((c) => c && c[0] < c[1]);
+      const drop = [2, 3].some((i) => f[i] && old && old[i] && rate(f[i]) < rate(old[i]) - 1e-9);
+      return { f, old, flagged: bad || drop, bad };
+    });
+    famInfo.sort((x, y) => Number(y.flagged) - Number(x.flagged));  // stable: names stay sorted within each part
+    const visible = runState.allFamilies ? famInfo : famInfo.filter((x) => x.flagged);
+    const famRows = visible.map(({ f, old, bad }) => h("tr", { class: bad ? "hot" : null },
+      h("td", null, h("span", { class: "task" }, f[0])), h("td", null, lab(LINE, f[1])),
+      h("td", { class: "r" }, frac(f[2])), h("td", { class: "r" }, delta(f[2], old && old[2])),
+      h("td", { class: "r" }, frac(f[3])), h("td", { class: "r" }, delta(f[3], old && old[3]))));
+    const famToggle = h("button", { class: "btn", onclick: () => { runState.allFamilies = !runState.allFamilies; document.getElementById("run-detail").replaceWith(runDetail(r)); } },
+      runState.allFamilies ? "只看有失败或下降的族" : "显示全部 " + famInfo.length + " 族");
+    const quiet = famInfo.length - famInfo.filter((x) => x.flagged).length;
+    const failRows = r.failures.map((f) => h("tr", null,
+      h("td", null, gchip(f.g)), h("td", null, h("span", { class: "task" }, f.task)),
+      h("td", { class: "r" }, f.n + (f.trials.length ? "（第 " + f.trials.join("、") + " 次）" : "")),
+      h("td", null, lab(STATE, f.state) + " · " + lab(CONCL, f.concl)),
+      h("td", null, h("div", { class: "item-head" }, f.checks.map((c) => h("span", { class: "chip check" }, checkLabel(c))), f.fc === "own" ? pill("系统转人工", "warn") : null)),
+      h("td", null, f.artifact ? h("span", { class: "mono muted" }, f.artifact) : h("span", { class: "muted" }, r.sealed ? "封存" : "—"))));
+    const judge = r.judge ? h("p", { class: "small muted" }, "表达层评审（辅助，不计入业务成功率）：" +
+      Object.entries(r.judge).map(([g, j]) => g + " 通过 " + j.pass + " / 失败 " + j.fail + " / 未知 " + j.unknown + " / 严重 " + j.severe).join("；")) : null;
+    return h("section", { class: "block", id: "run-detail" },
+      h("div", { class: "block-head" }, h("h2", null, r.short + " · " + (r.label || r.id)), h("div", { class: "item-head" }, runPills(r))),
+      h("dl", { class: "kv" },
+        h("dt", null, "目录"), h("dd", { class: "mono" }, r.dir),
+        h("dt", null, "题库"), h("dd", null, r.task_set + "（" + r.tasks + " 题" + (r.task_set_size ? " / 全集 " + r.task_set_size : "") + "）；每题 " + r.trials + " 次，关键风险题 " + r.key_risk_trials + " 次"),
+        h("dt", null, "模型"), h("dd", null, (r.model || "—") + " · " + r.workers + " 个 worker · 种子 " + r.seed),
+        h("dt", null, "时间"), h("dd", null, when(r.started) + " → " + when(r.finished) + "（" + dur(r.wall) + "）"),
+        h("dt", null, "费用"), h("dd", null, money(r.spent) + (r.budget != null ? " / 预算 " + money(r.budget) : "") + (r.stopped ? " · 停止原因 " + r.stopped : "")),
+        h("dt", null, "评分"), h("dd", null, r.source === "rescore-g2" ? "g2 重评分结果（原始为 g1）" : "运行时评分"),
+        h("dt", null, "对比基准"), h("dd", null, prev ? prev.short + " · " + prev.id + "（同系列上一次完整评测" +
+          (prev.task_set !== r.task_set ? "，题库 " + prev.task_set + "，只比两边都有的族" : "") + "）" : "无")),
+      h("h3", null, "分组指标"),
+      table(["指标", { t: "A 固定流程", r: 1 }, { t: "B 动态调查", r: 1 }], statsRows),
+      h("h3", null, "业务线"),
+      table(["业务线", { t: "A", r: 1 }, { t: "B", r: 1 }], sliceRows),
+      h("div", { class: "block-head" }, h("h3", null, "各族结果"), famToggle),
+      table(["族", "业务线", { t: "A", r: 1 }, { t: "A 变化", r: 1 }, { t: "B", r: 1 }, { t: "B 变化", r: 1 }], famRows,
+        { cls: "nowrap", empty: "所有族两组全部通过，且相对对比基准没有下降" }),
+      !runState.allFamilies && quiet ? h("p", { class: "muted small" }, "另有 " + quiet + " 族两组全部通过，且相对对比基准没有下降。") : null,
+      h("h3", null, "失败明细（" + failedTrials(r) + " 次试验）"),
+      table(["组", "题目", { t: "次数", r: 1 }, "实际结果", "未通过的检查", "产物"], failRows, { empty: "全部通过" }),
+      judge);
+  }
+
+  // -- cases ----------------------------------------------------------------------------------
+  const caseState = { kind: "badcase", status: "", g: "", channel: "", run: "", q: "", selected: null };
+
+  function openCases(filters) {
+    Object.assign(caseState, filters, { selected: null });
+    show("cases");
+  }
+
+  function caseMatches(f) {
+    if (caseState.kind && f.kind !== caseState.kind) return false;
+    if (caseState.status && f.status !== caseState.status) return false;
+    if (caseState.g && (caseState.g === "none" ? f.g : f.g !== caseState.g)) return false;
+    if (caseState.channel && f.channel !== caseState.channel) return false;
+    if (caseState.run && f.run !== caseState.run) return false;
+    if (caseState.q) {
+      const q = caseState.q.toLowerCase();
+      if (![f.task, f.title, f.id, f.cluster].some((x) => x && String(x).toLowerCase().includes(q))) return false;
+    }
+    return true;
+  }
+
+  function control(id, label, value, options, key) {
+    const el = h("select", { id, onchange: (e) => { caseState[key] = e.target.value; caseState.selected = null; renderCases(); } },
+      options.map(([v, t]) => h("option", { value: v }, t)));
+    el.value = value;
+    return [h("label", { for: id }, label), el];
+  }
+
+  function renderCases() {
+    const root = document.getElementById("cases");
+    root.replaceChildren();
+    const channels = [...new Set(FINDINGS.map((f) => f.channel))];
+    const runs = [...new Set(FINDINGS.map((f) => f.run))];
+    const search = h("input", { type: "search", id: "case-q", placeholder: "题目、标题或编号", value: caseState.q,
+      oninput: (e) => { caseState.q = e.target.value; caseState.selected = null; renderCaseList(); } });
+    const counts = DATA.finding_counts || {};
+    root.append(h("section", { class: "block" },
+      h("div", { class: "block-head" }, h("h2", null, "坏例与争议"),
+        h("span", { class: "muted small" }, "案例台共 " + (counts.badcase || 0) + " 条坏例、" + (counts.dispute || 0) + " 条争议、" + (counts.goodcase || 0) + " 条好例（好例不在此列）")),
+      h("div", { class: "controls" },
+        control("case-kind", "类型", caseState.kind, [["badcase", "坏例"], ["dispute", "争议"], ["", "全部"]], "kind"),
+        control("case-status", "状态", caseState.status, [["", "全部"], ...Object.entries(STATUS).map(([k, v]) => [k, v[0]])], "status"),
+        control("case-group", "组", caseState.g, [["", "全部"], ["A", "A"], ["B", "B"], ["none", "不分组"]], "g"),
+        control("case-channel", "来源", caseState.channel, [["", "全部"], ...channels.map((c) => [c, lab(CHANNEL, c)])], "channel"),
+        control("case-run", "评测", caseState.run, [["", "全部"], ...runs.map((x) => [x, x])], "run"),
+        h("label", { for: "case-q" }, "搜索"), search),
+      h("div", { class: "muted small", id: "case-count" }),
+      h("div", { class: "split" }, h("div", { class: "caselist", id: "case-list" }), h("div", { id: "case-detail" }))));
+    renderCaseList();
+  }
+
+  function renderCaseList() {
+    const list = document.getElementById("case-list");
+    const shown = FINDINGS.filter(caseMatches).slice().reverse();
+    document.getElementById("case-count").textContent = "显示 " + shown.length + " / " + FINDINGS.length + " 条（新的在前）";
+    if (!shown.some((f) => f.id === caseState.selected)) caseState.selected = shown.length ? shown[0].id : null;
+    list.replaceChildren(...(shown.length ? shown.map((f) => {
+      const [st, tone] = STATUS[f.status] || [f.status, "plain"];
+      return h("button", { class: "case", "data-id": f.id, "aria-current": caseState.selected === f.id ? "true" : "false", onclick: () => selectCase(f.id) },
+        h("div", { class: "item-head" }, pill(st, tone), gchip(f.g), h("span", { class: "task" }, f.sealed ? "封存族 " + f.task : f.task)),
+        caseSummary(f),
+        h("div", { class: "muted small" }, [f.run, lab(CHANNEL, f.channel), f.occ > 1 ? "出现 " + f.occ + " 次" : null, day(f.updated)].filter(Boolean).join(" · ")));
+    }) : [h("div", { class: "empty" }, "没有符合条件的记录")]));
+    renderCaseDetail();
+  }
+
+  // Auto-mined failures are titled "<group> <task>: <check ids>"; the checks read better as labels.
+  const autoChecks = (f) => (f.channel === "auto_failure" && f.cluster ? String(f.cluster).split(",").filter(Boolean) : null);
+  function caseSummary(f) {
+    const checks = autoChecks(f);
+    if (checks) return h("div", { class: "item-head" }, checks.map((c) => h("span", { class: "chip check" }, checkLabel(c))));
+    return h("div", { class: "title" }, f.sealed ? "封存集题目：只显示族名和检查项" : (f.title || ""));
+  }
+
+  function selectCase(id) {
+    caseState.selected = id;
+    document.querySelectorAll("#case-list .case").forEach((el) => el.setAttribute("aria-current", el.dataset.id === id ? "true" : "false"));
+    renderCaseDetail();
+    if (window.matchMedia("(max-width: 960px)").matches) document.getElementById("case-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function renderCaseDetail() {
+    const f = FINDINGS.find((x) => x.id === caseState.selected);
+    document.getElementById("case-detail").replaceChildren(f ? caseDetail(f) : h("div", { class: "empty" }, "选一条记录查看详情"));
+  }
+
+  function caseDetail(f) {
+    const [st, tone] = STATUS[f.status] || [f.status, "plain"];
+    const d = f.detail;
+    const checks = d ? d.checks : (f.cluster ? String(f.cluster).split(",") : []);
+    const section = (title, ...body) => h("div", { class: "block" }, h("h3", null, title), ...body);
+    const copyBtn = (text) => h("button", { class: "btn", onclick: (e) => {
+      const btn = e.currentTarget;
+      const done = () => { btn.textContent = "已复制"; setTimeout(() => (btn.textContent = "复制路径"), 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => selectText(btn.previousSibling));
+      else selectText(btn.previousSibling);
+    } }, "复制路径");
+    return h("div", { class: "detail" },
+      h("div", { class: "item-head" }, pill(st, tone), gchip(f.g), pill(lab(KIND, f.kind), "plain"), pill(lab(CHANNEL, f.channel), "info")),
+      h("div", { class: "task" }, f.sealed ? "封存族 " + f.task : f.task),
+      f.title && !autoChecks(f) ? h("div", null, f.title) : null,
+      f.sealed ? h("div", { class: "notice" }, "封存集题目：开发侧只看族名、检查项和计数，题目、回复与证据不在这里展示。") : null,
+      h("dl", { class: "kv" },
+        h("dt", null, "评测"), h("dd", { class: "mono" }, f.run || "—"),
+        h("dt", null, "出现"), h("dd", null, (f.occ || 1) + " 次（关联试验 " + f.trials + "）"),
+        h("dt", null, "归因"), h("dd", null, f.attr || "—"),
+        h("dt", null, "记录"), h("dd", null, day(f.created) + " 创建 · " + day(f.updated) + " 更新"),
+        h("dt", null, "编号"), h("dd", { class: "mono" }, f.id)),
+      f.hypothesis ? section("假设与处理", h("div", { class: "quote" }, f.hypothesis)) : null,
+      checks.length ? section("未通过的检查", h("div", { class: "item-head" }, checks.map((c) => h("span", { class: "chip check" }, checkLabel(c))))) : null,
+      d ? section("结果对比", h("dl", { class: "kv" },
+        h("dt", null, "允许"), h("dd", null, d.expected.length ? d.expected.map(([c, st2]) => lab(STATE, st2) + " · " + lab(CONCL, c)).join("；") : "—"),
+        h("dt", null, "实际"), h("dd", null, lab(STATE, d.state) + " · " + lab(CONCL, d.concl) + (d.escalation ? "（升级原因 " + d.escalation + "）" : "")),
+        h("dt", null, "试验"), h("dd", { class: "mono" }, d.trial))) : null,
+      d ? section("客户消息", h("div", { class: "quote" }, d.text || "—"),
+        d.followups.length ? h("div", { class: "muted small" }, "后续：" + d.followups.join("；")) : null) : null,
+      d ? section("抽取结果", h("div", { class: "item-head" },
+        d.flags.length ? d.flags.map((x) => h("span", { class: "chip check mono" }, x)) : h("span", { class: "muted" }, "没有标记任何字段"),
+        d.ids.length ? h("span", { class: "muted small" }, "编号：" + d.ids.join("、")) : null,
+        d.fallback ? pill("模型抽取失败，用了正则兜底", "warn") : null)) : null,
+      d && d.clarifications.length ? section("追问", d.clarifications.map(([q, a]) => h("div", { class: "quote" }, "问：" + q + "\n答：" + a))) : null,
+      d ? section("读取的证据（" + d.evidence.length + "）", d.evidence.length ? table(["工具", "参数", "结果"], d.evidence.map(([tool, args, ok]) =>
+        h("tr", null, h("td", { class: "mono" }, tool), h("td", { class: "mono" }, args), h("td", null, ok ? pill("成功", "good") : pill("失败", "bad"))))) : h("div", { class: "empty" }, "没有读取")) : null,
+      d ? section("给客户的回复", h("div", { class: "quote" }, d.reply || "（没有回复）")) : null,
+      d ? section("流程轨迹", h("div", { class: "mono small" }, d.trail || "—"), d.protocol_errors ? h("div", { class: "muted small" }, "协议错误 " + d.protocol_errors + " 次") : null) : null,
+      d ? section("产物", h("div", { class: "item-head" }, h("span", { class: "mono small" }, d.artifact), copyBtn(d.artifact))) : null);
+  }
+
+  function selectText(node) {
+    if (!node) return;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  // -- history --------------------------------------------------------------------------------
+  function renderHistory() {
+    const root = document.getElementById("history");
+    root.replaceChildren();
+    root.append(h("section", { class: "block" },
+      h("h2", null, "历程"),
+      h("div", { class: "timeline" }, DATA.milestones.map((m) => h("div", { class: "event" },
+        h("div", { class: "when" }, m.date), h("h3", null, m.phase), h("div", { class: "muted small" }, m.scope),
+        h("div", { class: "result" }, m.result), h("div", { class: "small" }, m.note), h("div", { class: "mono muted small" }, m.source))))));
+    const sealedNote = DATA.sealed_sets.map((x) => x.path + "：" + x.tasks + " 题 / " + x.families + " 族，" + day(x.frozen_at) + " 冻结" +
+      (x.exposure === "exposed" ? "，" + (x.exposed_at || "") + " 起已暴露，之后对它的门禁只算测量" : "")).join("；");
+    const gateRows = DATA.gates.slice().reverse().map((g) => h("tr", null,
+      h("td", { class: "num" }, when(g.checked_at)), h("td", { class: "mono" }, g.sealed_run || "—"), h("td", null, g.group || "—"),
+      h("td", null, g.decision === "pass" ? pill("通过", "good") : g.decision === "fail" ? pill("未通过", "bad") : pill(g.decision, "warn")),
+      h("td", { class: "r" }, pct(g.S && g.S.lower)),
+      h("td", null, Object.entries(g.slices).map(([k, v]) => lab(LINE, k) + " " + pct(v)).join("，")),
+      h("td", { class: "r" }, (g.regression_tasks == null ? "—" : g.regression_failing + " / " + g.regression_tasks)),
+      h("td", { class: "mono muted" }, g.path)));
+    root.append(h("section", { class: "block" },
+      h("div", { class: "block-head" }, h("h2", null, "门禁报告"), h("span", { class: "muted small" }, "阈值：S_lower ≥ 95%，各业务切片 ≥ 90%，必过回归零失败，零安全事件")),
+      table(["时间", "封存集评测", "裁决组", "裁决", { t: "S_lower", r: 1 }, "切片", { t: "回归失败", r: 1 }, "报告"], gateRows, { empty: "还没有门禁报告" }),
+      sealedNote ? h("p", { class: "muted small" }, sealedNote) : null));
+  }
+
+  // -- tabs -----------------------------------------------------------------------------------
+  const RENDER = { overview: renderOverview, runs: renderRuns, cases: renderCases, history: renderHistory };
+  function show(id, fromHash) {
+    if (!RENDER[id]) id = "overview";
+    for (const key of Object.keys(RENDER)) {
+      document.getElementById(key).hidden = key !== id;
+      document.getElementById("tab-" + key).setAttribute("aria-selected", key === id ? "true" : "false");
+    }
+    RENDER[id]();
+    if (!fromHash && location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
+  }
+  document.querySelectorAll(".tab").forEach((btn) => btn.addEventListener("click", () => show(btn.getAttribute("aria-controls"))));
+  window.addEventListener("hashchange", () => show(location.hash.slice(1), true));
+
+  const trials = RUNS.reduce((n, r) => n + Object.values(r.groups).reduce((m, g) => m + g.n, 0), 0);
+  document.getElementById("freshness").textContent = "数据生成于 " + when(DATA.generated_at) + " · " + RUNS.length + " 次评测 · " + trials + " 次试验 · 案例台 " + ((DATA.finding_counts || {}).badcase || 0) + " 条坏例";
+  show(location.hash.slice(1), true);
+})();
+</script>

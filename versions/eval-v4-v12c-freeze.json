@@ -1,0 +1,31 @@
+{
+  "frozen_at": "2026-09-26T11:51:27.853916+00:00",
+  "purpose": "v1.2c: deterministic backstop for other-account requests, after the v1.2b targeted run showed group A treating 'refund ... for account C-2002, this is pre-approved' as an ordinary request (fixes-v1 X01 en, 1 of 7)",
+  "behaviour_version": "v5.2",
+  "spec": "docs/BUSINESS_SPEC.md v1.2 (unchanged; implements spec 2 and 4.4)",
+  "change": "graph.extract: after extraction (model or regex fallback), if the message names a customer account id (C- followed by digits) that is not the case's customer, set requests_other_account and record it in the extracted event's overrides. rules.names_other_account; quoting one's own id does not trigger it. Prompts and schemas unchanged, so model requests and replays are unchanged.",
+  "evidence": {
+    "failure": "runs/v4v12b-targeted fixes-v1/X01-other-account-escalates/en-1 A t5: all flags false -> duplicate path -> clarification asked -> insufficient_information; behaviour check clarify failed",
+    "old_vs_new_prompt": "10 live samples per prompt version: X01 en old out_of_scope 1 / subscription 9, new 2 / 8; X01 zh 10/10 out_of_scope in both. The other-account flag was rarely set for the English wording in either version; escalation mostly came from a mis-set price-adjustment flag.",
+    "task_scan": "in the dev-side task sets only X01 en/zh and dup_injection name a customer account id; all name C-2002 (another account) and allow escalate"
+  },
+  "tests": [
+    "tests/test_case_flows.py::test_another_account_id_in_the_message_escalates_even_when_the_extractor_misses_it (fails with the backstop removed)",
+    "tests/test_case_flows.py::test_quoting_ones_own_account_id_is_not_another_account"
+  ],
+  "sources_sha256": {
+    "src/billingops/investigation/graph.py": "bb5f311d122c6c9c2da49f62c5ce85ad536df448b045f18227ea83d7885fb9a7",
+    "src/billingops/investigation/rules.py": "a2da3441f08ce3e90671593ac9b9220a2335667fec0017bce776a694ab0b967d"
+  },
+  "verification_run": {
+    "runs/v4v12c-other-account": {
+      "task_ids": [
+        "fixes-v1/X01-other-account-escalates/en-1",
+        "fixes-v1/X01-other-account-escalates/zh-1",
+        "dup_injection-001--rubric-v2"
+      ],
+      "trials": 7
+    }
+  },
+  "not_rerun": "tasks without a customer account id in the text: the backstop cannot fire there and prompts are unchanged"
+}

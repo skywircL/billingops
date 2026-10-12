@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BillingOps</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1c2330; --muted:#65708a; --line:#dfe3ea; --ok:#1d7a4b; --warn:#a15c00; --bad:#b3261e; --accent:#1f4fd8; }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:center; gap:16px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0; }
+  header label { color:var(--muted); }
+  main { display:grid; grid-template-columns: 340px 1fr; gap:16px; padding:16px 20px; max-width:1400px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:14px; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 10px; }
+  textarea, input, select, button { font:inherit; }
+  textarea { width:100%; min-height:88px; border:1px solid var(--line); border-radius:6px; padding:8px; resize:vertical; }
+  input[type=text] { width:100%; border:1px solid var(--line); border-radius:6px; padding:7px 8px; }
+  button { border:1px solid var(--line); background:#fff; border-radius:6px; padding:7px 12px; cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.danger { color:var(--bad); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+  .list button { display:block; width:100%; text-align:left; margin-bottom:6px; }
+  .list button.active { border-color:var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef1f6; color:var(--muted); }
+  .pill.state-closed { background:#e3f4ea; color:var(--ok); }
+  .pill.state-awaiting_user, .pill.state-awaiting_approval { background:#fff3e0; color:var(--warn); }
+  .pill.state-uncertain, .pill.state-error, .pill.state-escalated { background:#fdeceb; color:var(--bad); }
+  .pill.ledger-done { background:#e3f4ea; color:var(--ok); }
+  .pill.ledger-in_doubt, .pill.ledger-sending { background:#fdeceb; color:var(--bad); }
+  .pill.ledger-confirmed_not_executed { background:#eef1f6; color:var(--ink); }
+  .two { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  dl { display:grid; grid-template-columns: 150px 1fr; gap:4px 10px; margin:0; }
+  dt { color:var(--muted); } dd { margin:0; word-break:break-word; }
+  pre { background:#f1f3f7; border-radius:6px; padding:8px; overflow:auto; font-size:12px; max-height:260px; margin:0; }
+  .msg { padding:10px 12px; background:#f1f3f7; border-radius:6px; white-space:pre-wrap; }
+  .events { font-size:12px; max-height:320px; overflow:auto; }
+  .events div { padding:3px 0; border-bottom:1px dashed var(--line); }
+  .events time { color:var(--muted); margin-right:8px; }
+  .flash { color:var(--bad); min-height:18px; margin-top:6px; }
+  .hint { color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>BillingOps</h1>
+  <label>Acting as <select id="identity">
+    <option value="cust-c1001">cust-c1001 (customer C-1001)</option>
+    <option value="cust-c1002">cust-c1002 (customer C-1002)</option>
+    <option value="ops-dana">ops-dana (operator)</option>
+    <option value="ops-lee">ops-lee (operator)</option>
+  </select></label>
+  <span class="hint">Identities are configured server-side; the role you pick here is what the server sees, and role claims in request bodies are ignored.</span>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <h2>Submit a case</h2>
+      <textarea id="text" placeholder="I was charged twice for invoice INV-2026-0142 (49.00 yuan each). Please refund the duplicate."></textarea>
+      <div class="row">
+        <input type="text" id="customer" placeholder="customer_id (operators only)" style="width:190px">
+        <select id="mode"><option value="">server default</option><option value="dynamic">dynamic (B)</option><option value="fixed">fixed (A)</option></select>
+        <button class="primary" id="submit">Submit</button>
+      </div>
+      <div class="flash" id="submit-flash"></div>
+    </div>
+    <div class="card">
+      <h2>Cases</h2>
+      <div class="list" id="cases"></div>
+    </div>
+  </section>
+  <section id="detail" hidden>
+    <div class="card">
+      <h2>Case <span id="case-id"></span></h2>
+      <div class="two">
+        <div>
+          <dl>
+            <dt>business state</dt><dd><span class="pill" id="state"></span> <span class="hint">who is handling it</span></dd>
+            <dt>customer</dt><dd id="d-customer"></dd>
+            <dt>mode</dt><dd id="d-mode"></dd>
+            <dt>proposal</dt><dd id="d-proposal"></dd>
+            <dt>budgets</dt><dd id="d-budgets"></dd>
+          </dl>
+        </div>
+        <div>
+          <dl>
+            <dt>execution outcome</dt><dd><span class="pill" id="ledger"></span> <span class="hint">what happened to the money</span></dd>
+            <dt>sends recorded</dt><dd id="d-sends"></dd>
+            <dt>verifications</dt><dd id="d-verify"></dd>
+            <dt>receipt</dt><dd id="d-receipt"></dd>
+            <dt>escalation</dt><dd id="d-escalation"></dd>
+          </dl>
+        </div>
+      </div>
+      <div class="flash" id="action-flash"></div>
+    </div>
+    <div class="card" id="question-card" hidden>
+      <h2>Question for the customer</h2>
+      <div class="msg" id="question"></div>
+    </div>
+    <div class="card">
+      <h2>Message to the customer</h2>
+      <div class="msg" id="final"></div>
+    </div>
+    <div class="card">
+      <h2>Actions</h2>
+      <div class="row">
+        <input type="text" id="message" placeholder="additional information from the customer" style="flex:1">
+        <button id="send">Send</button>
+      </div>
+      <div class="row">
+        <input type="text" id="note" placeholder="approval note" style="flex:1">
+        <button class="primary" id="approve">Approve proposal</button>
+        <button id="reject">Reject</button>
+      </div>
+      <div class="row">
+        <input type="text" id="reason" placeholder="handoff reason" style="flex:1">
+        <button class="danger" id="escalate">Hand off to operator</button>
+        <button id="resume">Retry verification</button>
+      </div>
+      <p class="hint">Every button sends one command with a fresh Idempotency-Key. Approval is bound to the proposal version shown above; a changed proposal refuses the old approval.</p>
+    </div>
+    <div class="two">
+      <div class="card"><h2>Evidence</h2><pre id="evidence"></pre></div>
+      <div class="card"><h2>Audit events</h2><div class="events" id="events"></div></div>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let selected = null;
+let displayedProposal = null;
+const key = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+const headers = (withKey) => { const h = {"Content-Type": "application/json", "X-Demo-Identity": $("identity").value}; if (withKey) h["Idempotency-Key"] = key(); return h; };
+
+async function api(method, path, body) {
+  const res = await fetch(path, {method, headers: headers(method === "POST"), body: body === undefined ? undefined : JSON.stringify(body)});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`${res.status}: ${data.detail || JSON.stringify(data)}`);
+  return data;
+}
+
+async function loadCases() {
+  try {
+    const cases = await api("GET", "/cases");
+    $("cases").innerHTML = cases.map(c => `<button data-id="${c.id}" class="${c.id === selected ? "active" : ""}"><b>${c.id}</b> <span class="pill state-${c.state}">${c.state}</span><br><span class="hint">${c.customer_id} · ${c.mode} · v${c.proposal_version}</span></button>`).join("") || "<span class='hint'>no cases visible to this identity</span>";
+    document.querySelectorAll("#cases button").forEach(b => b.onclick = () => { selected = b.dataset.id; loadCase(); loadCases(); });
+  } catch (e) { $("cases").innerHTML = `<span class="flash">${e.message}</span>`; }
+}
+
+function pill(el, cls, text) { el.className = "pill " + cls; el.textContent = text || "-"; }
+
+async function loadCase() {
+  if (!selected) return;
+  try {
+    const requestedId = selected;
+    const v = await api("GET", `/cases/${requestedId}`);
+    if (selected !== requestedId) return;
+    const c = v.case, x = v.execution;
+    displayedProposal = c.proposal ? {caseId: c.id, version: c.proposal.version} : null;
+    $("detail").hidden = false;
+    $("case-id").textContent = c.id;
+    pill($("state"), "state-" + c.state, c.state);
+    $("d-customer").textContent = c.customer_id;
+    $("d-mode").textContent = c.mode;
+    $("d-proposal").textContent = c.proposal?.kind === "batch_refund"
+      ? `v${c.proposal.version} · invoice ${c.proposal.invoice_id} · total ${c.proposal.amount_cents} ${c.proposal.currency} cents · ${c.proposal.items.map(i => `${i.payment_id}: ${i.amount_cents} ${i.currency} cents`).join("; ")}`
+      : c.proposal ? `v${c.proposal.version}: refund ${c.proposal.amount_cents} ${c.proposal.currency} cents on ${c.proposal.payment_id} (${c.proposal.dispute_key})` : "none";
+    $("d-budgets").textContent = v.budgets ? Object.entries(v.budgets).map(([k, n]) => `${k} ${n}`).join(" · ") : "-";
+    pill($("ledger"), x ? "ledger-" + x.status : "", x ? x.status : "no action");
+    $("d-sends").textContent = x ? x.sends_recorded : "-";
+    $("d-verify").textContent = x ? `${x.verify_attempts}` + (x.last_verification ? ` (last: ${x.last_verification.result})` : "") : "-";
+    $("d-receipt").textContent = x?.items ? x.items.map(i => `${i.payment_id}: ${i.status || "not_started"} ${i.receipt?.refund?.id || i.receipt?.rejection_code || ""}`).join("; ") : x && x.receipt ? `${x.receipt.status} ${x.receipt.refund ? x.receipt.refund.id : x.receipt.rejection_code || ""}` : "-";
+    $("d-escalation").textContent = c.escalation ? `${c.escalation.reason} by ${c.escalation.by}` : "-";
+    $("question-card").hidden = !c.pending_question;
+    $("question").textContent = c.pending_question || "";
+    $("final").textContent = c.final_message || (c.state === "investigating" ? "investigating..." : "-");
+    $("evidence").textContent = JSON.stringify(v.evidence.map(e => ({tool: e.tool, args: e.args, ok: e.ok, phase: e.phase, error: e.error})), null, 1);
+    const events = await api("GET", `/cases/${selected}/events`);
+    $("events").innerHTML = events.slice().reverse().map(e => `<div><time>${e.at.slice(11, 19)}</time><b>${e.kind}</b> <span class="hint">${e.actor}</span> ${e.kind === "state_changed" ? e.payload.from + " → " + e.payload.to : ""}</div>`).join("");
+    const st = c.state;
+    $("send").disabled = !["awaiting_user", "awaiting_approval", "executing", "verifying", "uncertain", "error", "escalated"].includes(st);
+    $("approve").disabled = $("reject").disabled = st !== "awaiting_approval";
+    $("escalate").disabled = ["executing", "verifying", "closed", "escalated"].includes(st);
+    $("resume").disabled = !["uncertain", "error", "escalated"].includes(st);
+  } catch (e) { $("action-flash").textContent = e.message; }
+}
+
+async function act(fn, flash) {
+  $(flash).textContent = "";
+  try { await fn(); } catch (e) { $(flash).textContent = e.message; }
+  await loadCases(); await loadCase();
+}
+
+$("submit").onclick = () => act(async () => {
+  const body = {text: $("text").value};
+  if ($("customer").value) body.customer_id = $("customer").value;
+  if ($("mode").value) body.mode = $("mode").value;
+  const r = await api("POST", "/cases", body);
+  selected = r.case_id; $("text").value = "";
+}, "submit-flash");
+$("send").onclick = () => act(async () => { await api("POST", `/cases/${selected}/messages`, {text: $("message").value}); $("message").value = ""; }, "action-flash");
+async function decideDisplayed(decision) {
+  const shown = displayedProposal;
+  if (!shown || shown.caseId !== selected) throw new Error("Refresh and review the proposal before deciding.");
+  await api("POST", `/cases/${shown.caseId}/decision`, {decision, proposal_version: shown.version, note: $("note").value});
+}
+$("approve").onclick = () => act(() => decideDisplayed("approve"), "action-flash");
+$("reject").onclick = () => act(() => decideDisplayed("reject"), "action-flash");
+$("escalate").onclick = () => act(async () => { await api("POST", `/cases/${selected}/escalate`, {reason: $("reason").value || "operator takes over"}); }, "action-flash");
+$("resume").onclick = () => act(async () => { await api("POST", `/cases/${selected}/resume`); }, "action-flash");
+$("identity").onchange = () => { loadCases(); loadCase(); };
+loadCases();
+setInterval(() => { loadCases(); loadCase(); }, 2000);
+</script>
+</body>
+</html>
